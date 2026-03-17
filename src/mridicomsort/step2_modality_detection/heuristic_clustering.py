@@ -201,7 +201,7 @@ def main(input_csv, output):
     df = pd.read_csv(input_csv)
 
     initial_count = len(df)
-    df = df[df["action"] == "include"]
+    df = df[df["action"] == "include"] if "action" in df.columns else df
 
     print(
         f"Filtered out excluded scans. Processing {len(df)} included scans (out of {initial_count} total)."
