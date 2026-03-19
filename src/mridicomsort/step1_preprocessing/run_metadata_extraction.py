@@ -37,7 +37,6 @@ def process_leaf_dir(leaf_path: Path) -> dict[str, str]:
         "StackCount": "NaN",
         "TriggerType": "NaN",
         "DetailedParams": "NaN",
-        "ZSpacing": "NaN",
         "ValidationNote": "No valid DICOMs",
     }
 
@@ -72,14 +71,13 @@ def process_leaf_dir(leaf_path: Path) -> dict[str, str]:
     ]
     if spatial_datasets:
         analysis4d = detect_4d_analysis(spatial_datasets)
-        is_valid_grid, grid_reason, z_spacing = get_nifti_validity(spatial_datasets)
+        is_valid_grid, grid_reason = get_nifti_validity(spatial_datasets)
 
         row["NiftiSafe"] = str(is_valid_grid and not analysis4d["Is4D"])
         row["Is4D"] = str(analysis4d["Is4D"])
         row["StackCount"] = str(analysis4d["StackCount"])
         row["TriggerType"] = str(analysis4d.get("Trigger", "None"))
         row["DetailedParams"] = str(analysis4d.get("Parameters", "NaN"))
-        row["ZSpacing"] = str(round(z_spacing, 4)) if z_spacing else "NaN"
         row["ValidationNote"] = str(grid_reason)
     else:
         row["ValidationNote"] = "Missing spatial metadata (Cannot convert to 3D)"
@@ -124,7 +122,7 @@ def walk_leaves(root: Path) -> List[Path]:
     default="dicom_metadata.csv",
     help="Output CSV path",
 )
-@click.option("--workers", type=int, default=6, help="Number of CPU cores to use")
+@click.option("--workers", type=int, default=8, help="Number of CPU cores to use")
 def main(root: str, output: str, workers: int):
     root_path = Path(root)
     leaves = walk_leaves(root_path)
