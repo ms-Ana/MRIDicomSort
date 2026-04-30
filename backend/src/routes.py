@@ -9,7 +9,10 @@ from pathlib import Path
 import logging
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import StreamingResponse
+from src.models import FilterRequest
+from mridicomsort.step1_preprocessing.filtering import process_single_row
 from mridicomsort.step1_preprocessing.run_metadata_extraction import process_leaf_dir, walk_leaves
+import yaml
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -69,3 +72,25 @@ async def extract_metadata(root: str, output: str, workers: int = 6):
         stream_extraction(root, output, workers), 
         media_type="text/event-stream"
     )
+
+@router.post("/api/filter")
+async def apply_filter(request: FilterRequest):
+    try:
+        # Parse the YAML string sent from the frontend
+        config = yaml.safe_load(request.config_yaml)
+        if config is None:
+            config = {}
+    except yaml.YAMLError as e:
+        return {"error": f"Invalid YAML format: {str(e)}"}
+
+    updated_data = []
+    for row in request.data:
+        # Run your existing filtering logic
+        path, action, reason = process_single_row(row, config)
+        
+        # Append the new filter results to the row
+        row["action"] = action
+        row["pre_filters_reason"] = reason
+        updated_data.append(row)
+
+    return {"status": "success", "data": updated_data}

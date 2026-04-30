@@ -3,7 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 // Custom APIs for renderer
 const api = {
   selectFolder: () => ipcRenderer.invoke('dialog:openDirectory'),
-  saveFile: () => ipcRenderer.invoke('dialog:saveFile')
+  saveFile: () => ipcRenderer.invoke('dialog:saveFile'),
+  openYamlFile: () => ipcRenderer.invoke('dialog:openYamlFile')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

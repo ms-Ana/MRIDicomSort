@@ -52,16 +52,39 @@
     </div>
 
     <!-- Reusable Table Component (Only shows if there are results) -->
-    <div class="card" v-if="results.length > 0">
-      <h3 class="section-title">Extraction Results</h3>
+   <div class="card" v-if="results.length > 0">
+      <!-- NEW: Table Header with Filter Button -->
+      <div class="table-header-container">
+        <h3 class="section-title">Extraction Results (Live Preview)</h3>
+        <button class="btn-secondary" @click="isFilterModalOpen = true">
+          ⚙️ Apply Pre-Filters
+        </button>
+      </div>
+      
       <DicomMetadataTable :data="results" />
     </div>
+
+
+    <FilterModal 
+      :is-open="isFilterModalOpen" 
+      :current-data="results"
+      @close="isFilterModalOpen = false"
+      @filtered="handleFilteredData"
+    />
+
+
   </div>
 </template>
 
 <script setup>
 import { ref, onUnmounted } from 'vue'
 import DicomMetadataTable from './DicomMetadataTable.vue'
+import FilterModal from './FilterModal.vue'
+
+const isFilterModalOpen = ref(false)
+const handleFilteredData = (filteredData) => {
+  results.value = filteredData
+}
 
 const rootDir = ref('')
 const outputFile = ref('')
@@ -306,4 +329,15 @@ progress::-moz-progress-bar { background-color: var(--primary-color); }
   font-weight: 500;
   font-size: 14px;
 }
+
+.table-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.table-header-container .section-title {
+  margin-bottom: 0; /* Remove bottom margin to align with button */
+}
+
 </style>

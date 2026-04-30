@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { spawn } from 'child_process'
 import path from 'path'
+import fs from 'fs'
 
 let pythonProcess: ReturnType<typeof spawn> | null = null
 
@@ -30,6 +31,24 @@ ipcMain.handle('dialog:saveFile', async () => {
     return null
   } else {
     return filePath // Returns the absolute path where the user wants to save
+  }
+})
+
+ipcMain.handle('dialog:openYamlFile', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Select YAML Configuration',
+    properties: ['openFile'],
+    filters: [
+      { name: 'YAML Files', extensions: ['yaml', 'yml'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+  
+  if (canceled || filePaths.length === 0) {
+    return null
+  } else {
+    // Read the file and return its string content to Vue
+    return fs.readFileSync(filePaths[0], 'utf-8') 
   }
 })
 
