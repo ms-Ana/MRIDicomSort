@@ -46,45 +46,42 @@ def process_leaf_dir(leaf_path: Path) -> dict[str, str]:
     if num_files == 0:
         return row
 
-    valid_datasets = []
+    spatial_datasets = []
     stack_ids = set()
 
     # Read files to check validity and find multiple stacks
     for f in files:
         try:
-            ds = pydicom.dcmread(str(f), stop_before_pixels=False, force=False)
-            if "PixelData" not in ds:
+            ds = pydicom.dcmread(str(f), stop_before_pixels=True, force=False)
+            if "ImagePositionPatient" not in ds or "ImageOrientationPatient" not in ds:
                 continue
-            valid_datasets.append(ds)
+
+            spatial_datasets.append(ds)
+
             if "StackID" in ds and ds.StackID:
                 stack_ids.add(str(ds.StackID))
+                
         except Exception:
             pass  # File is corrupted or not DICOM
 
-    if not valid_datasets:
-        return row  # No valid images found, return the error row
+    if not spatial_datasets:
+        row["ValidationNote"] = "No datasets with spatial metadata found (Cannot convert to 3D)"
+        return row
+    
+    analysis4d = detect_4d_analysis(spatial_datasets)
+    is_valid_grid, grid_reason = get_nifti_validity(spatial_datasets)
 
-    spatial_datasets = [
-        ds
-        for ds in valid_datasets
-        if "ImagePositionPatient" in ds and "ImageOrientationPatient" in ds
-    ]
-    if spatial_datasets:
-        analysis4d = detect_4d_analysis(spatial_datasets)
-        is_valid_grid, grid_reason = get_nifti_validity(spatial_datasets)
-
-        row["NiftiSafe"] = str(is_valid_grid and not analysis4d["Is4D"])
-        row["Is4D"] = str(analysis4d["Is4D"])
-        row["StackCount"] = str(analysis4d["StackCount"])
-        row["TriggerType"] = str(analysis4d.get("Trigger", "None"))
-        row["DetailedParams"] = str(analysis4d.get("Parameters", "NaN"))
-        row["ValidationNote"] = str(grid_reason)
-    else:
-        row["ValidationNote"] = "Missing spatial metadata (Cannot convert to 3D)"
-
-    ds_rep = valid_datasets[0]
+    row["NiftiSafe"] = str(is_valid_grid and not analysis4d["Is4D"])
+    row["Is4D"] = str(analysis4d["Is4D"])
+    row["StackCount"] = str(analysis4d["StackCount"])
+    row["TriggerType"] = str(analysis4d.get("Trigger", "None"))
+    row["DetailedParams"] = str(analysis4d.get("Parameters", "NaN"))
+    row["ValidationNote"] = str(grid_reason)
+  
+    ds_rep = spatial_datasets[0]
 
     row["MultipleStacks"] = len(stack_ids) > 1
+    
     if len(stack_ids) > 1:
         row["Status"] = "check_multiple_stacks"
     elif row["NiftiSafe"] == "False":

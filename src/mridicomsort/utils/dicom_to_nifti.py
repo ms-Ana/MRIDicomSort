@@ -2,6 +2,9 @@ import click
 import pandas as pd
 import os
 import dicom2nifti
+import dicom2nifti.settings as settings
+
+settings.disable_validate_slice_increment()
 
 @click.command()
 @click.argument("dicom_summary", type=str)

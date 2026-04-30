@@ -8,7 +8,7 @@ from mridicomsort.step1_preprocessing.filtering import Filter
 @click.argument(
     "dicom_report",
     type=click.Path(exists=True, dir_okay=False),
-    required=False,
+    required=True,
 )
 @click.option(
     "--output_file",
@@ -28,7 +28,7 @@ from mridicomsort.step1_preprocessing.filtering import Filter
     help="Whether to rerun the fit step even if the output file already exists.",
 )
 def main(
-    dicom_report: str | Path | None = None,
+    dicom_report: str | Path | None,
     output_file: str | Path | None = None,
     config_path: str | Path | None = None,
     rerun: bool = False,

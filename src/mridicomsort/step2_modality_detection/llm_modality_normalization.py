@@ -53,12 +53,18 @@ def normalize_sequences(sequence_list: list, model_name: str = MODEL_NAME) -> di
     except Exception as e:
         print(f"Error calling OpenAI: {e}")
         return {}
+    
+def clean_modality_name(name: str) -> str:
+
+    if "<unused95>" in name.lower():
+        name = name.split("<unused95>")[1].strip()
+    return name.strip().upper().replace(" ", "_").replace("-", "_")
 
 
 def collect_names(node: dict, names_set: set):
     """Recursively extracts all unique cluster_names from the tree."""
-    if "cluster_name" in node:
-        names_set.add(node["cluster_name"])
+    if "cluster_name" in node:      
+            names_set.add(clean_modality_name(node["cluster_name"]))
     elif "branches" in node:
         for child in node["branches"].values():
             collect_names(child, names_set)
@@ -68,8 +74,9 @@ def apply_mapping(node: dict, mapping: dict):
     """Recursively updates cluster_names in the tree based on the LLM mapping."""
     if "cluster_name" in node:
         old_name = node["cluster_name"]
-        # Default to the old name if the LLM forgot to include it in the mapping
-        node["cluster_name"] = mapping.get(old_name, old_name)
+        cleaned_old_name = clean_modality_name(old_name)
+       
+        node["cluster_name"] = mapping.get(cleaned_old_name, cleaned_old_name)
     elif "branches" in node:
         for child in node["branches"].values():
             apply_mapping(child, mapping)

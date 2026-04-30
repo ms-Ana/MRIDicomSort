@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import click
-from mridicomsort.utils.MRIScan import MRIScan
+# from mridicomsort.utils.MRIScan import MRIScan
 
 
 @dataclass
@@ -154,12 +154,12 @@ def read_volume(path: Path) -> Optional[np.ndarray]:
             if vol.ndim >= 3:
                 vol = np.transpose(vol, (2, 0, 1))
             return vol
-        elif path.is_dir():
-            scan = MRIScan(str(path))
-            volume = scan.volume
-            if volume is None or getattr(volume, "ndim", 0) < 3:
-                return None
-            return volume
+        # elif path.is_dir():
+        #     scan = MRIScan(str(path))
+        #     volume = scan.volume
+        #     if volume is None or getattr(volume, "ndim", 0) < 3:
+        #         return None
+        #     return volume
     except Exception as e:
         print(f"      DEBUG: Failed to read {path}: {e}")
         return None

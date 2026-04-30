@@ -3,7 +3,7 @@ from pathlib import Path
 from mridicomsort.step1_preprocessing.dicom_metadata import CONTRAST_METADATA
 import numpy as np
 from typing import Any
-
+import dicom2nifti
 
 def determine_orientation(iop) -> str:
     """Determines image orientation via the cross product of the direction cosines."""
@@ -63,39 +63,21 @@ def check_contrast(ds) -> bool:
     return False
 
 
-def get_nifti_validity(datasets: list[pydicom.Dataset]) -> tuple[bool, str, float]:
+def get_nifti_validity(datasets: list[pydicom.Dataset]) -> tuple[bool, str]:
     """Validates 3D grid integrity (checks for gaps or mixed orientations)."""
-    if len(datasets) < 2:
-        return False, "Single Slice", 0.0
+    
+    try:
+        dicom2nifti.common.validate_orientation(datasets)
+    except dicom2nifti.exceptions.ConversionValidationError: 
+        return False, f"IMAGE_ORIENTATION_INCONSISTENT"
 
-    orientations = set(
-        tuple(round(float(x), 4) for x in ds.ImageOrientationPatient) for ds in datasets
-    )
-    if len(orientations) > 1:
-        return False, f"Mixed Orientations ({len(orientations)})", 0.0
-
-    iop = datasets[0].ImageOrientationPatient
-    normal = np.cross(iop[:3], iop[3:])
-
-    def get_projection(ds):
-        return np.dot(ds.ImagePositionPatient, normal)
-
-    datasets.sort(key=get_projection)
-
-    projections = np.array([get_projection(ds) for ds in datasets])
-    distances = np.diff(projections)
-
-    if np.any(np.isclose(distances, 0, atol=1e-3)):
-        return True, "Overlapping Slices (Potential 4D)", np.mean(np.abs(distances))
-
-    unique_steps = np.unique(np.round(np.abs(distances), 3))
-    avg_spacing = np.mean(unique_steps)
-
-    if len(unique_steps) > 1:
-        if (np.max(unique_steps) - np.min(unique_steps)) > 0.05:
-            return False, f"Non-uniform Z-spacing: {unique_steps}", avg_spacing
-
-    return True, "Valid 3D Grid", avg_spacing
+    if not dicom2nifti.common.is_orthogonal(datasets):
+        return False, f"NON_CUBICAL_IMAGE/GANTRY_TILT"
+      
+    if len(datasets) <= 20:
+        return False, "TOO_FEW_SLICES"
+    
+    return True, "Valid 3D Grid"
 
 
 def detect_4d_analysis(datasets: list[pydicom.Dataset]) -> dict[str, Any]:
