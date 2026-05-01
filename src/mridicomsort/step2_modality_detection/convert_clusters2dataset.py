@@ -68,8 +68,8 @@ def main(named_clusters_json, meta_csv, output):
         "Orientation",
         "Contrast",
         "SeriesDescription",
-        "action",
-        "pre-filters-reason",
+        "Action",
+        "Pre Filter Reason",
     ]
 
     all_columns = base_columns + sorted(

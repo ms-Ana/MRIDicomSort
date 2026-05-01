@@ -55,7 +55,7 @@
    <div class="card" v-if="results.length > 0">
       <!-- NEW: Table Header with Filter Button -->
       <div class="table-header-container">
-        <h3 class="section-title">Extraction Results (Live Preview)</h3>
+        <h3 class="section-title">Extraction Results </h3>
         <button class="btn-secondary" @click="isFilterModalOpen = true">
           ⚙️ Apply Pre-Filters
         </button>
@@ -96,6 +96,8 @@ const results = ref([])
 const errorMessage = ref('')
 
 let eventSource = null
+let flushInterval = null
+let rowBuffer = []
 
 const chooseFolder = async () => {
   const folderPath = await window.api.selectFolder()
@@ -113,8 +115,17 @@ const startExtraction = () => {
   completed.value = 0
   results.value = []
   errorMessage.value = ''
+  rowBuffer = []
 
   if (eventSource) eventSource.close()
+  if (flushInterval) clearInterval(flushInterval)
+
+  flushInterval = setInterval(() => {
+    if (rowBuffer.length > 0) {
+      results.value.push(...rowBuffer)
+      rowBuffer = [] 
+    }
+  }, 500)
 
   const baseUrl = 'http://localhost:8000'
   const url = `${baseUrl}/api/extract?root=${encodeURIComponent(rootDir.value)}&output=${encodeURIComponent(outputFile.value)}`
@@ -128,27 +139,38 @@ const startExtraction = () => {
       total.value = data.total
     } else if (data.status === 'progress') {
       completed.value = data.completed
-      results.value.push(data.row)
+      rowBuffer.push(data.row)
     } else if (data.status === 'done') {
-      isProcessing.value = false
-      eventSource.close()
-      alert(data.message)
+      finishProcessing(data.message)
     } else if (data.status === 'error') {
       errorMessage.value = data.message
-      isProcessing.value = false
-      eventSource.close()
+      finishProcessing(null, true)
     }
   }
 
   eventSource.onerror = () => {
     errorMessage.value = "Lost connection to the backend server."
-    isProcessing.value = false
-    eventSource.close()
+    finishProcessing(null, true)
   }
+}
+
+const finishProcessing = (message, isError = false) => {
+  isProcessing.value = false
+  if (eventSource) eventSource.close()
+  if (flushInterval) clearInterval(flushInterval)
+  
+  // Flush any remaining data in the buffer
+  if (rowBuffer.length > 0) {
+    results.value.push(...rowBuffer)
+    rowBuffer = []
+  }
+
+  if (message && !isError) alert(message)
 }
 
 onUnmounted(() => {
   if (eventSource) eventSource.close()
+  if (flushInterval) clearInterval(flushInterval)
 })
 </script>
 

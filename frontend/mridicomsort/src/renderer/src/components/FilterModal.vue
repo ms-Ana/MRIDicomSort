@@ -17,9 +17,10 @@
           <div class="editor-toolbar">
             <button class="btn-secondary small" @click="loadFromFile">📁 Load Existing .yaml</button>
           </div>
+          <!-- Added specific class to guarantee interactivity -->
           <textarea 
             v-model="yamlContent" 
-            class="yaml-editor" 
+            class="yaml-editor interactive-field" 
             placeholder="Paste or write your YAML configuration here..."
             spellcheck="false"
           ></textarea>
@@ -119,13 +120,63 @@ const applyFilter = async () => {
 </script>
 
 <style scoped>
+/* --------------------------------------
+   BUTTON STYLES (Copied from Main App)
+--------------------------------------- */
+.btn-secondary {
+  background: var(--surface-color);
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn-primary:disabled, .btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.small { 
+  padding: 6px 12px; 
+  font-size: 13px; 
+}
+
+/* --------------------------------------
+   MODAL LAYOUT STYLES
+--------------------------------------- */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.6); /* Dark slate backdrop */
+  background: rgba(15, 23, 42, 0.6);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -200,6 +251,9 @@ const applyFilter = async () => {
 
 .editor-toolbar { margin-bottom: 12px; }
 
+/* --------------------------------------
+   TEXTAREA / EDITOR FIXES
+--------------------------------------- */
 .yaml-editor {
   width: 100%;
   height: 320px;
@@ -212,12 +266,27 @@ const applyFilter = async () => {
   resize: none;
 }
 
+/* 
+   CRITICAL: These overrides force Electron/Vue to allow user interaction
+   in the text area, overriding any global app-level restrictions.
+*/
+.interactive-field {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  pointer-events: auto !important;
+  -webkit-app-region: no-drag !important;
+}
+
 .yaml-editor:focus {
   outline: none;
   border-color: var(--primary-color);
   background: #ffffff;
 }
 
+/* --------------------------------------
+   INSTRUCTIONS TYPOGRAPHY
+--------------------------------------- */
 .instructions h3 { margin-top: 0; color: var(--text-main); }
 .instructions h4 { margin: 16px 0 8px 0; color: var(--primary-color); }
 .instructions pre {
@@ -237,6 +306,4 @@ const applyFilter = async () => {
   gap: 12px;
   background: var(--bg-color);
 }
-
-.small { padding: 6px 12px; font-size: 13px; }
 </style>

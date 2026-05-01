@@ -89,8 +89,8 @@ async def apply_filter(request: FilterRequest):
         path, action, reason = process_single_row(row, config)
         
         # Append the new filter results to the row
-        row["action"] = action
-        row["pre_filters_reason"] = reason
+        row["Action"] = action
+        row["Pre Filter Reason"] = reason
         updated_data.append(row)
 
     return {"status": "success", "data": updated_data}
