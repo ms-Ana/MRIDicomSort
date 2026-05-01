@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import click
 import nibabel as nib
 import numpy as np
 import pandas as pd
 from PIL import Image
-import click
+
 # from mridicomsort.utils.MRIScan import MRIScan
 
 
@@ -173,19 +174,19 @@ def window_image(
     width: Optional[float] = None,
 ) -> np.ndarray:
     img = pixel_array.astype(np.float32)
-    
+
     finite_mask = np.isfinite(img)
     if not np.any(finite_mask):
         return np.zeros_like(img, dtype=np.uint8)
     valid_pixels = img[finite_mask]
 
     if center is None or width is None or width <= 0:
-        vmin = np.percentile(valid_pixels, 1) 
-        vmax = np.percentile(valid_pixels, 99.8) 
-        
+        vmin = np.percentile(valid_pixels, 1)
+        vmax = np.percentile(valid_pixels, 99.8)
+
         if vmax == vmin:
             return np.zeros_like(img, dtype=np.uint8)
-            
+
         img = np.clip(img, vmin, vmax)
         scaled = (img - vmin) / (vmax - vmin)
         return (scaled * 255.0).astype(np.uint8)
@@ -391,7 +392,7 @@ def build_html(
     .series-grid {{
     display: grid;
     /* Increase the minimum width from 280px to something like 380px or 400px */
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); 
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
     gap: 16px;
     }}
 
@@ -403,7 +404,7 @@ def build_html(
       position: relative;
       overflow: hidden;
       transition: all 0.2s ease;
-      cursor: pointer; 
+      cursor: pointer;
     }}
 
     .series-card:hover {{
@@ -459,7 +460,7 @@ def build_html(
       width: 100%;
       height: auto;
       aspect-ratio: 1 / 1; /* Forces a perfect square */
-      object-fit: contain; 
+      object-fit: contain;
       background-color: #000;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -493,10 +494,10 @@ def build_html(
       box-shadow: var(--shadow);
     }}
 
-    .meta-panel h2 {{ 
-      margin: 0 0 12px; 
-      font-size: 1.1rem; 
-      font-weight: 600; 
+    .meta-panel h2 {{
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
       flex-shrink: 0;
     }}
 
@@ -557,8 +558,8 @@ def build_html(
       }});
 
       img.addEventListener('click', (e) => {{
-        e.stopPropagation(); 
-        
+        e.stopPropagation();
+
         pinned = !pinned;
         if (pinned) {{
           updateMetadata(img.dataset.meta);
@@ -573,7 +574,7 @@ def build_html(
       card.addEventListener('click', () => {{
         const isExcluded = card.classList.contains('excluded');
         const badge = card.querySelector('.status-badge');
-        
+
         if (isExcluded) {{
             card.classList.remove('excluded');
             card.dataset.action = 'include';
@@ -588,7 +589,7 @@ def build_html(
 
     document.getElementById('export-btn').addEventListener('click', () => {{
       let csvContent = "DirectoryPath,action\\n";
-      
+
       document.querySelectorAll('.series-card').forEach(card => {{
         const path = card.dataset.path;
         const action = card.dataset.action;
@@ -816,7 +817,6 @@ def main(
     serve,
     port,
 ) -> None:
-
     csv_path = Path(input_csv)
     output_dir, assets_dir = build_output_tree(Path(output_dir))
 

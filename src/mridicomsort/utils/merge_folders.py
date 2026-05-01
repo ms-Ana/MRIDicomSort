@@ -1,9 +1,10 @@
 """Merge contents of two directories, handling identical and differing files appropriately."""
 
+import filecmp
 import os
 import shutil
-import filecmp
 from pathlib import Path
+
 import click
 from tqdm import tqdm
 

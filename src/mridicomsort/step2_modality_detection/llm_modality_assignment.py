@@ -1,10 +1,12 @@
 import json
+from collections import defaultdict
+
 import click
 import pandas as pd
 from openai import OpenAI
-from collections import defaultdict
 from tqdm import tqdm
-from mridicomsort.config import LLM_API_KEY, MODEL_NAME, LLM_BASE_URL
+
+from mridicomsort.config import LLM_API_KEY, LLM_BASE_URL, MODEL_NAME
 
 client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
@@ -33,15 +35,15 @@ def generate_cluster_name(
 
     2. Identify the sequence family if possible:
     The sequence family is determined by the combination of parameters and can be one of the following:
-    - SE (Spin Echo) including: 
+    - SE (Spin Echo) including:
         - Fast SE: 	Phillips:Turbo SE; Siemens: Turbo SE; GE: Fast SE; Hitachi: Fast SE; Toshiba: Fast SE
         - Ultra fast SE: Phillips: SSH-TSE, UFSE; Siemens: SSTSE, HASTE; GE: SS-FSE; Hitachi: FSE - ADA, Toshiba: (Super)FASE DIET
-    
+
     - Multi SE (Multi Spin Echo): Phillips: Multi SE; Siemens: Multi écho MS; GE: SE, Hitachi: SE; Toshiba: Multi écho
 
     - IR (Inversion Recovery): Phillips: IR, IR TSE; Siemens: IR/IRM, TurboIR/TIRM; GE: IR, FSE-IR; Hitachi: IR, FIR; Toshiba: IR, Fast IR
-    - STIR (Short Tau Inversion Recovery): Phillips: STIR, STIR TSE; Siemens: STIR, Turbo STIR; GE: STIR, Fast STIR; Hitachi: STIR; Toshiba: STIR 
-    - FLAIR (Fluid Attenuated Inversion Recovery): Phillips: FLAIR, FLAIR TSE; Siemens: FLAIR, Turbo FLAIR; GE: FLAIR, Fast FLAIR; Hitachi: FLAIR, Fast FLAIR; Toshiba: FLAIR, Fast FLAIR 
+    - STIR (Short Tau Inversion Recovery): Phillips: STIR, STIR TSE; Siemens: STIR, Turbo STIR; GE: STIR, Fast STIR; Hitachi: STIR; Toshiba: STIR
+    - FLAIR (Fluid Attenuated Inversion Recovery): Phillips: FLAIR, FLAIR TSE; Siemens: FLAIR, Turbo FLAIR; GE: FLAIR, Fast FLAIR; Hitachi: FLAIR, Fast FLAIR; Toshiba: FLAIR, Fast FLAIR
 
     - GRE (Gradient Echo): Phillips: FFE; Siemens: GRE; GE: GRE; Hitachi: GE; Toshiba: FE including:
         - Spoiled GRE: Phillips: T1 FFE; Siemens: FLASH; GE: SPGR, MPSPGR; Hitachi: RSSG; Toshiba: RF-spoiled, FE
@@ -54,13 +56,13 @@ def generate_cluster_name(
     - SE-EPI (Echo Planar Imaging):	Phillips:SE-EPI; Siemens: EPI SE; GE: SE EPI; Hitachi: SE EPI; Toshiba:	 EPI
     - GRE-EPI (Echo Planar Imaging): Phillips: FFE-EPI, TFE-EPI; Siemens: EPI Perf, EPIFI; GE: GRE EPI; Hitachi: SG-EPI; Toshiba: FE-EPI
 
-    
+
     Use manufacturer independent terminology: SE insted of Turbo SE, GRE instead of FFE, etc. (SE, Multi SE, IR, STIR, FLAIR, GRE,  SE-EPI, GRE-EPI)
 
     4. Do NOT include:
     - acquisition plane (axial, sagittal, coronal)
     - dimensionality (2D/3D)
-    - contrast 
+    - contrast
 
     6. Output format:
     - Use underscores as separators

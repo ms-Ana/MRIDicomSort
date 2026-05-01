@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click
+
 from mridicomsort.step1_preprocessing.filtering import Filter
 
 
@@ -33,7 +34,6 @@ def main(
     config_path: str | Path | None = None,
     rerun: bool = False,
 ):
-
     print(f"Applying filters using report: {dicom_report}...")
     filter_instance = Filter(config_path=config_path)
     filter_instance.fit(report_path=dicom_report, output_file=output_file, rerun=rerun)

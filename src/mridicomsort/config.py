@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from yaml import safe_load
 
-
 load_dotenv()
 
 LLM_BASE_URL = os.getenv("LLM_BASE_URL")

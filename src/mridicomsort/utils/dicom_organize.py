@@ -1,12 +1,12 @@
 """Script to reorganize DICOM files into a structured directory based on patient names and study dates."""
 
 import hashlib
-
-import click
-import pydicom
 import os
 import shutil
 from pathlib import Path
+
+import click
+import pydicom
 from tqdm import tqdm
 
 

@@ -1,10 +1,11 @@
-import os
-import yaml
-import pandas as pd
-from mridicomsort.config import CONFIG, NUM_WORKERS
-
-from tqdm import tqdm
 import concurrent.futures
+import os
+
+import pandas as pd
+import yaml
+from tqdm import tqdm
+
+from mridicomsort.config import CONFIG, NUM_WORKERS
 
 
 def process_single_row(row: dict, config: dict) -> tuple[str, str, str]:
@@ -12,7 +13,7 @@ def process_single_row(row: dict, config: dict) -> tuple[str, str, str]:
     Applies config rules to a single row from the DICOM metadata CSV report.
     """
     path_key = str(row.get("DirectoryPath", "unknown_path"))
-    exclude_action = config.get("exclude_action", "exclude")
+    exclude_action = "exclude"
 
     if str(row.get("Status")).lower() == "error":
         return path_key, exclude_action, "Scan failed validation (Status != ok)"
@@ -26,7 +27,7 @@ def process_single_row(row: dict, config: dict) -> tuple[str, str, str]:
             or str(raw_value).strip().lower() == "nan"
             or raw_value == ""
         ):
-            continue  
+            continue
 
         if isinstance(raw_value, str) and "\\" in raw_value:
             raw_value = raw_value.split("\\")
@@ -135,7 +136,7 @@ class Filter:
             print("No scans/rows found in the report.")
             return
 
-        actions = {"DirectoryPath": [], "action": [], "pre-filters-reason": []}
+        actions = {"DirectoryPath": [], "Action": [], "Pre Filter Reason": []}
 
         rows = df_report.to_dict(orient="records")
 
@@ -155,8 +156,8 @@ class Filter:
                 path_key, action, reason = future.result()
 
                 actions["DirectoryPath"].append(path_key)
-                actions["action"].append(action)
-                actions["pre-filters-reason"].append(reason)
+                actions["Action"].append(action)
+                actions["Pre Filter Reason"].append(reason)
 
         df_actions = pd.DataFrame(actions)
         if output_file:

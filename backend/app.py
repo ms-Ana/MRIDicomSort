@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-
 from src.routes import router
 
 
@@ -14,10 +13,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 def build_app():
     app = FastAPI(
-        title="MRI Dicom Labeling API", 
-        description=(
-            "API for labeling MRI dicom images."
-        ),
+        title="MRI Dicom Labeling API",
+        description=("API for labeling MRI dicom images."),
         version="0.1.0",
     )
     app.include_router(router)

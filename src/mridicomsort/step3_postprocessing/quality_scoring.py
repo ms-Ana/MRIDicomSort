@@ -5,9 +5,8 @@ import click
 import numpy as np
 import pandas as pd
 import pydicom
-from tqdm import tqdm
-
 from mridicomsort.utils.MRIScan import MRIScan
+from tqdm import tqdm
 
 
 def _safe_float(value: Any) -> float | None:
@@ -288,7 +287,7 @@ class MRIQualityChecker:
             "quality_grade": quality_grade,
             "suggested_action": suggested_action,
             "quality_flags": " | ".join(reasons) if reasons else "",
-            "histogram": histogram,  
+            "histogram": histogram,
         }
 
     def process_directories(

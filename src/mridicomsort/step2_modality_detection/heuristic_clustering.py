@@ -1,8 +1,8 @@
 import json
+
 import click
 import numpy as np
 import pandas as pd
-from collections import defaultdict
 
 EXCLUDED_COLUMNS = [
     "DirectoryPath",
@@ -36,29 +36,20 @@ EXCLUDED_COLUMNS = [
     "AcquisitionNumber",
 ]
 
-
-def is_numeric_list(values):
-    """Check if a list of unique values can all be safely cast to floats."""
-    if not values:
-        return False
-
-    for v in values:
-        if pd.isna(v):
-            continue
-        if isinstance(v, bool) or str(v).strip().lower() in ["true", "false"]:
-            return False
-        if isinstance(v, str) and "\\" in v:
-            return False
-        try:
-            float(v)
-        except (ValueError, TypeError):
-            return False
-    return True
+ROUNDING_RULES = {
+    "MagneticFieldStrength": 1,
+    "FlipAngle": 0,
+    "RepetitionTime": 0,
+    "EchoTime": 0,
+    "InversionTime": 0,
+    "PixelSpacing": 3,
+    "SliceThickness": 2,
+}
 
 
 def assign_to_bin(value, bin_edges):
     """Helper to place a numeric value into the correct bin string."""
-    if pd.isna(value) or value is None:
+    if pd.isna(value) or value is None or value == "":
         return "Missing"
     try:
         val = float(value)
@@ -75,64 +66,90 @@ def assign_to_bin(value, bin_edges):
         return "Invalid/Missing"
 
 
-def build_cluster_tree(leaves, rules, current_index=0):
-    """
-    Recursively builds a tree by splitting leaves according to the sorted rules.
-    """
-    if not leaves:
+def build_cluster_tree(df, rules, current_index=0):
+    if df.empty:
         return []
 
-    if current_index >= len(rules) or len(leaves) <= 1:
-        return [leaf.get("DirectoryPath", "Unknown") for leaf in leaves]
+    if current_index >= len(rules) or len(df) <= 1:
+        return df["DirectoryPath"].tolist()
 
     rule = rules[current_index]
     attr = rule["attribute"]
     action = rule["action"]
 
-    clusters = defaultdict(list)
+    if attr not in df.columns:
+        return build_cluster_tree(df, rules, current_index + 1)
 
-    for leaf in leaves:
-        val = leaf.get(attr)
-
-        if pd.isna(val) or val is None or val == "":
-            group_key = "Missing"
-        elif action == "categorical_split":
-            group_key = str(val)
-        elif action == "numeric_binning":
-            group_key = assign_to_bin(val, rule["bin_edges"])
+    if action == "categorical_split":
+        if rule.get("is_numeric"):
+            precision = ROUNDING_RULES.get(attr, 2)
+            group_keys = (
+                pd.to_numeric(df[attr], errors="coerce")
+                .round(precision)
+                .fillna("Missing")
+                .astype(str)
+            )
         else:
-            group_key = "Other"
+            group_keys = df[attr].fillna("Missing").astype(str)
 
-        clusters[group_key].append(leaf)
+    elif action == "numeric_binning":
+        precision = ROUNDING_RULES.get(attr, 2)
+        rounded_series = pd.to_numeric(df[attr], errors="coerce").round(precision)
+        group_keys = rounded_series.apply(lambda x: assign_to_bin(x, rule["bin_edges"]))
+
+    else:
+        group_keys = pd.Series("Other", index=df.index)
+
+    clusters = dict(tuple(df.groupby(group_keys)))
 
     if len(clusters) <= 1:
-        return build_cluster_tree(leaves, rules, current_index + 1)
+        return build_cluster_tree(df, rules, current_index + 1)
 
     node = {"split_attribute": attr, "split_type": action, "branches": {}}
 
-    for key, group_leaves in clusters.items():
-        node["branches"][key] = build_cluster_tree(
-            group_leaves, rules, current_index + 1
-        )
+    for key, subset_df in clusters.items():
+        node["branches"][key] = build_cluster_tree(subset_df, rules, current_index + 1)
 
     return node
 
 
+def count_clusters(node):
+    """Recursively counts the number of final leaf clusters in the tree."""
+    if isinstance(node, list):
+        return 1
+
+    if isinstance(node, dict) and "branches" in node:
+        return sum(count_clusters(branch) for branch in node["branches"].values())
+
+    return 0
+
+
 def compute_dataset_statistics(df):
-    """Computes completion rates and unique values using Pandas."""
+    """Computes completion rates and unique values, rounding floats to fix scanner jitter."""
     total_valid_scans = len(df)
     stats = {}
 
     if total_valid_scans == 0:
         return stats
+
     for col in df.columns:
         if col in EXCLUDED_COLUMNS:
             continue
 
         valid_series = df[col].dropna()
-        if valid_series.dtype == object:
-            valid_series = valid_series[valid_series.astype(str).str.strip() != ""]
-            valid_series = valid_series[valid_series.astype(str).str.lower() != "nan"]
+        if valid_series.empty:
+            continue
+
+        is_numeric = False
+        try:
+            float_series = valid_series.astype(float)
+            precision = ROUNDING_RULES.get(col, 2)
+            valid_series = float_series.round(precision)
+
+            is_numeric = True
+        except (ValueError, TypeError):
+            valid_series = valid_series.astype(str).str.strip()
+            valid_series = valid_series[valid_series.str.lower() != "nan"]
 
         count = len(valid_series)
         unique_vals = valid_series.unique().tolist()
@@ -144,23 +161,35 @@ def compute_dataset_statistics(df):
             else 0,
             "unique_values_count": len(unique_vals),
             "unique_values": unique_vals,
+            "is_numeric": is_numeric,
         }
     return stats
 
 
-def determine_split_rules(stats):
-    """Applies heuristics to determine how (and if) to split attributes."""
+def print_cluster_sizes(node, path=""):
+    """Recursively prints the size of each final cluster."""
+    if isinstance(node, list):
+        print(f"Cluster: [{path.strip(' -> ')}] - {len(node)} scans")
+        return
+
+    if isinstance(node, dict) and "branches" in node:
+        for branch_name, branch_node in node["branches"].items():
+            new_path = f"{path}{node['split_attribute']}={branch_name} -> "
+            print_cluster_sizes(branch_node, new_path)
+
+
+def determine_split_rules(df, stats):
+    """Applies heuristics using the FULL data distribution for correct binning."""
     split_rules = []
 
     for attr, data in stats.items():
         if data["percent_filled"] <= 50.0:
             continue
-
         if data["unique_values_count"] <= 1:
             continue
 
         unique_count = data["unique_values_count"]
-        is_numeric = is_numeric_list(data["unique_values"])
+        is_numeric = data["is_numeric"]
 
         rule = {
             "attribute": attr,
@@ -175,9 +204,14 @@ def determine_split_rules(stats):
         else:
             if is_numeric:
                 rule["action"] = "numeric_binning"
-                float_vals = [float(x) for x in data["unique_values"]]
-                bins = np.histogram_bin_edges(float_vals, bins=min(10, len(float_vals)))
-                rule["bin_edges"] = [round(b, 3) for b in bins.tolist()]
+
+                precision = ROUNDING_RULES.get(attr, 2)
+                full_numeric_series = df[attr].dropna().astype(float).round(precision)
+
+                bins = np.histogram_bin_edges(
+                    full_numeric_series, bins=min(10, unique_count)
+                )
+                rule["bin_edges"] = [round(b, precision) for b in bins.tolist()]
             else:
                 rule["action"] = "drop_high_cardinality_categorical"
 
@@ -201,7 +235,7 @@ def main(input_csv, output):
     df = pd.read_csv(input_csv)
 
     initial_count = len(df)
-    df = df[df["action"] == "include"] if "action" in df.columns else df
+    df = df[df["Action"] == "include"] if "Action" in df.columns else df
 
     print(
         f"Filtered out excluded scans. Processing {len(df)} included scans (out of {initial_count} total)."
@@ -212,7 +246,7 @@ def main(input_csv, output):
         return
 
     stats = compute_dataset_statistics(df)
-    rules = determine_split_rules(stats)
+    rules = determine_split_rules(df, stats)
 
     print("\n--- HEURISTIC CLUSTERING RULES ---")
     if not rules:
@@ -231,15 +265,17 @@ def main(input_csv, output):
 
     print("\nBuilding hierarchical clustering tree...")
 
-    df_clean = df.where(pd.notnull(df), None)
-    leaves = df_clean.to_dict(orient="records")
-
-    cluster_tree = build_cluster_tree(leaves, rules)
+    cluster_tree = build_cluster_tree(df, rules)
 
     with open(output, "w") as f:
         json.dump(cluster_tree, f, indent=2)
 
-    print(f"Clustering complete. Tree saved to {output}.")
+    print(
+        f"Clustering complete. Tree saved to {output}. Total clusters: {count_clusters(cluster_tree)}"
+    )
+
+    print("\n--- Cluster Breakdown ---")
+    print_cluster_sizes(cluster_tree)
 
 
 if __name__ == "__main__":

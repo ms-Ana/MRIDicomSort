@@ -1,7 +1,9 @@
 import json
+
 import click
 from openai import OpenAI
-from mridicomsort.config import LLM_API_KEY, MODEL_NAME, LLM_BASE_URL
+
+from mridicomsort.config import LLM_API_KEY, LLM_BASE_URL, MODEL_NAME
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
@@ -15,7 +17,7 @@ def normalize_sequences(sequence_list: list, model_name: str = MODEL_NAME) -> di
     You will have a list of raw MRI contrast-weighting sequence strings that contain
     inconsistent naming conventions, typos, and vendor-specific shorthand. Your goal is
     to consolidate these into a clean, standardized list of meaningful clinical labels.
-    
+
     1. Group by Contrast & Technique.
     2. Handle Synonyms: Treat "Ultra_Fast," "Turbo," and "Fast" as the same functional
     category unless otherwise specified.
@@ -23,11 +25,11 @@ def normalize_sequences(sequence_list: list, model_name: str = MODEL_NAME) -> di
     (e.g., T2_GRE and T2-gre are the same).
     4. DWI Specifics: Group all Diffusion-weighted variations (EPI, Multi-b) under a unified
     "DWI".
-    
+
     Output Format:
     Return a JSON object. {{"Old_Name":"New_Name"}}
     Examples: {{"T1_Ultra_fast_GRE": "T1_GRE", "T2_UltraFastSE": "T2_SE"}}
-    
+
     Input List:
     {json.dumps(sequence_list, indent=2)}
     """
@@ -53,9 +55,9 @@ def normalize_sequences(sequence_list: list, model_name: str = MODEL_NAME) -> di
     except Exception as e:
         print(f"Error calling OpenAI: {e}")
         return {}
-    
-def clean_modality_name(name: str) -> str:
 
+
+def clean_modality_name(name: str) -> str:
     if "<unused95>" in name.lower():
         name = name.split("<unused95>")[1].strip()
     return name.strip().upper().replace(" ", "_").replace("-", "_")
@@ -63,8 +65,8 @@ def clean_modality_name(name: str) -> str:
 
 def collect_names(node: dict, names_set: set):
     """Recursively extracts all unique cluster_names from the tree."""
-    if "cluster_name" in node:      
-            names_set.add(clean_modality_name(node["cluster_name"]))
+    if "cluster_name" in node:
+        names_set.add(clean_modality_name(node["cluster_name"]))
     elif "branches" in node:
         for child in node["branches"].values():
             collect_names(child, names_set)
@@ -75,7 +77,7 @@ def apply_mapping(node: dict, mapping: dict):
     if "cluster_name" in node:
         old_name = node["cluster_name"]
         cleaned_old_name = clean_modality_name(old_name)
-       
+
         node["cluster_name"] = mapping.get(cleaned_old_name, cleaned_old_name)
     elif "branches" in node:
         for child in node["branches"].values():

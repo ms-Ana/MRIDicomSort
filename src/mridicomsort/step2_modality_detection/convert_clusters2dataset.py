@@ -1,4 +1,5 @@
 import json
+
 import click
 import pandas as pd
 

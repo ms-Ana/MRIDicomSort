@@ -1,9 +1,9 @@
 import hashlib
 import json
-from pathlib import Path
-from functools import partial
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import partial
+from pathlib import Path
 
 import click
 from tqdm import tqdm

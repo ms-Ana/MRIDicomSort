@@ -1,9 +1,11 @@
-import pydicom
 from pathlib import Path
-from mridicomsort.step1_preprocessing.dicom_metadata import CONTRAST_METADATA
-import numpy as np
 from typing import Any
+
 import dicom2nifti
+import pydicom
+
+from mridicomsort.step1_preprocessing.dicom_metadata import CONTRAST_METADATA
+
 
 def determine_orientation(iop) -> str:
     """Determines image orientation via the cross product of the direction cosines."""
@@ -65,18 +67,18 @@ def check_contrast(ds) -> bool:
 
 def get_nifti_validity(datasets: list[pydicom.Dataset]) -> tuple[bool, str]:
     """Validates 3D grid integrity (checks for gaps or mixed orientations)."""
-    
+
     try:
         dicom2nifti.common.validate_orientation(datasets)
-    except dicom2nifti.exceptions.ConversionValidationError: 
-        return False, f"IMAGE_ORIENTATION_INCONSISTENT"
+    except dicom2nifti.exceptions.ConversionValidationError:
+        return False, "IMAGE_ORIENTATION_INCONSISTENT"
 
     if not dicom2nifti.common.is_orthogonal(datasets):
-        return False, f"NON_CUBICAL_IMAGE/GANTRY_TILT"
-      
+        return False, "NON_CUBICAL_IMAGE/GANTRY_TILT"
+
     if len(datasets) <= 20:
         return False, "TOO_FEW_SLICES"
-    
+
     return True, "Valid 3D Grid"
 
 

@@ -1,8 +1,10 @@
-import click
-import pandas as pd
 import os
+
+import click
 import dicom2nifti
+import pandas as pd
 from tqdm import tqdm
+
 
 @click.command()
 @click.argument("dicom_summary", type=str)
@@ -18,18 +20,16 @@ def dicom_to_nifti(
     suffix: str,
 ):
     df = pd.read_csv(dicom_summary)
-    #df = df[df["final_modality"] == final_modality_name]
+    # df = df[df["final_modality"] == final_modality_name]
     suffix = f"_{suffix}" if suffix else ""
     for directory_path in tqdm(df[directory_column]):
         target_path = directory_path.split("/")[-3:]
         target_path = os.path.join(
             output_directory, "_".join(target_path) + f"{suffix}.nii.gz"
         )
-        try: 
+        try:
             dicom2nifti.dicom_series_to_nifti(
-                directory_path, 
-                target_path, 
-                reorient_nifti=True
+                directory_path, target_path, reorient_nifti=True
             )
         except Exception as e:
             print(f"Error converting {directory_path}: {e}")

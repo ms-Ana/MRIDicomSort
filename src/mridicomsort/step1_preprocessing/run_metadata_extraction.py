@@ -1,20 +1,22 @@
+import concurrent.futures
 import os
 import sys
 from pathlib import Path
 from typing import List
-import pydicom
+
 import click
-from tqdm import tqdm
-import concurrent.futures
 import pandas as pd
+import pydicom
+from tqdm import tqdm
+
 from mridicomsort.step1_preprocessing.dicom_metadata import METADATA
 from mridicomsort.step1_preprocessing.dicom_utils import (
-    detect_4d_analysis,
-    get_nifti_validity,
-    determine_orientation,
-    normalize_value,
-    format_image_type,
     check_contrast,
+    detect_4d_analysis,
+    determine_orientation,
+    format_image_type,
+    get_nifti_validity,
+    normalize_value,
 )
 
 
@@ -60,14 +62,16 @@ def process_leaf_dir(leaf_path: Path) -> dict[str, str]:
 
             if "StackID" in ds and ds.StackID:
                 stack_ids.add(str(ds.StackID))
-                
+
         except Exception:
             pass  # File is corrupted or not DICOM
 
     if not spatial_datasets:
-        row["ValidationNote"] = "No datasets with spatial metadata found (Cannot convert to 3D)"
+        row["ValidationNote"] = (
+            "No datasets with spatial metadata found (Cannot convert to 3D)"
+        )
         return row
-    
+
     analysis4d = detect_4d_analysis(spatial_datasets)
     is_valid_grid, grid_reason = get_nifti_validity(spatial_datasets)
 
@@ -77,11 +81,11 @@ def process_leaf_dir(leaf_path: Path) -> dict[str, str]:
     row["TriggerType"] = str(analysis4d.get("Trigger", "None"))
     row["DetailedParams"] = str(analysis4d.get("Parameters", "NaN"))
     row["ValidationNote"] = str(grid_reason)
-  
+
     ds_rep = spatial_datasets[0]
 
     row["MultipleStacks"] = len(stack_ids) > 1
-    
+
     if len(stack_ids) > 1:
         row["Status"] = "check_multiple_stacks"
     elif row["NiftiSafe"] == "False":

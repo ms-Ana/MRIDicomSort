@@ -1,8 +1,7 @@
 import os
 
-from fastapi.middleware.cors import CORSMiddleware
-
 from app import build_app
+from fastapi.middleware.cors import CORSMiddleware
 from src.logging_conf import setup_logging
 
 setup_logging()
@@ -23,4 +22,5 @@ app.add_middleware(
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8000)

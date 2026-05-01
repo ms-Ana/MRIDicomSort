@@ -1,6 +1,6 @@
+from typing import Any
 
 from pydantic import BaseModel
-from typing import Any
 
 
 class ExtractionRequest(BaseModel):
@@ -13,10 +13,10 @@ class ExtractionRequest(BaseModel):
             "example": {
                 "root_dir": "/path/to/your/directory",
                 "output_file": "/path/to/output/file.json",
-                "workers": 6
+                "workers": 6,
             }
         }
-    
+
 
 class FilterRequest(BaseModel):
     config_yaml: str
@@ -38,7 +38,7 @@ class FilterRequest(BaseModel):
                         "Orientation": "cor",
                         "Contrast": False,
                         # ... other metadata fields ...
-                    }
-                ]
+                    },
+                ],
             }
         }

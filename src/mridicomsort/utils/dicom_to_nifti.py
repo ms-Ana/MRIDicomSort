@@ -1,10 +1,12 @@
-import click
-import pandas as pd
 import os
+
+import click
 import dicom2nifti
 import dicom2nifti.settings as settings
+import pandas as pd
 
 settings.disable_validate_slice_increment()
+
 
 @click.command()
 @click.argument("dicom_summary", type=str)
@@ -27,9 +29,7 @@ def dicom_to_nifti(
             output_directory, "_".joint(target_path) + f"{suffix}.nii.gz"
         )
         dicom2nifti.dicom_series_to_nifti(
-            directory_path, 
-            target_path, 
-            reorient_nifti=True
+            directory_path, target_path, reorient_nifti=True
         )
 
 

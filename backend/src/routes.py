@@ -1,21 +1,23 @@
-import os
-import sys
-import json
-import asyncio
-import pandas as pd
 import concurrent.futures
+import json
+import logging
 from pathlib import Path
 
-import logging
-from fastapi import APIRouter, FastAPI, Request
+import pandas as pd
+import yaml
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from src.models import FilterRequest
+
 from mridicomsort.step1_preprocessing.filtering import process_single_row
-from mridicomsort.step1_preprocessing.run_metadata_extraction import process_leaf_dir, walk_leaves
-import yaml
+from mridicomsort.step1_preprocessing.run_metadata_extraction import (
+    process_leaf_dir,
+    walk_leaves,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 @router.get(
     "/health",
@@ -27,30 +29,27 @@ def health_check():
     return {"status": "ok"}
 
 
-def stream_extraction(root_dir: str,
-                      output_file: str, 
-                      workers: int = 6): 
-    
+def stream_extraction(root_dir: str, output_file: str, workers: int = 6):
     leaves = walk_leaves(Path(root_dir))
 
     if not leaves:
         yield f"data: {json.dumps({'status': 'error', 'message': f'No directories found in {root_dir}'})}\n\n"
         return
-    
+
     yield f"data: {json.dumps({'status': 'start', 'total': len(leaves)})}\n\n"
 
     results = []
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
         futures = {executor.submit(process_leaf_dir, leaf): leaf for leaf in leaves}
-        
+
         completed = 0
         for future in concurrent.futures.as_completed(futures):
             try:
                 row_data = future.result()
                 results.append(row_data)
                 completed += 1
-                
+
                 # Stream the newly extracted row to the frontend
                 yield f"data: {json.dumps({'status': 'progress', 'completed': completed, 'row': row_data})}\n\n"
             except Exception as e:
@@ -69,9 +68,9 @@ def stream_extraction(root_dir: str,
 async def extract_metadata(root: str, output: str, workers: int = 6):
     """Endpoint that returns a stream of Server-Sent Events"""
     return StreamingResponse(
-        stream_extraction(root, output, workers), 
-        media_type="text/event-stream"
+        stream_extraction(root, output, workers), media_type="text/event-stream"
     )
+
 
 @router.post("/api/filter")
 async def apply_filter(request: FilterRequest):
@@ -87,7 +86,7 @@ async def apply_filter(request: FilterRequest):
     for row in request.data:
         # Run your existing filtering logic
         path, action, reason = process_single_row(row, config)
-        
+
         # Append the new filter results to the row
         row["Action"] = action
         row["Pre Filter Reason"] = reason
